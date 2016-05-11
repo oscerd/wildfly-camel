@@ -1,5 +1,6 @@
 package org.wildfly.camel.test.nats;
 
+import java.io.IOException;
 import java.util.Properties;
 
 import org.apache.camel.CamelContext;
@@ -12,7 +13,6 @@ import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.nats.Connection;
@@ -22,30 +22,45 @@ import org.wildfly.extension.camel.CamelAware;
 @RunWith(Arquillian.class)
 public class NatsIntegrationTest {
 
+	private static ProcessBuilder pb;
+    private static Process p;
+	private static String gnatsdEnvironmentProperty = "GNATSD_PATH";
+	
     @Deployment
     public static JavaArchive createDeployment() {
-    	return ShrinkWrap.create(JavaArchive.class, "came-nats-tests.jar");
+    	return ShrinkWrap.create(JavaArchive.class, "camel-nats-tests.jar");
     }
 
     @Test
     public void testNatsComponent() throws Exception {
-
         CamelContext camelctx = new DefaultCamelContext();
         Endpoint endpoint = camelctx.getEndpoint("nats://localhost:4222?topic=test");
         Assert.assertNotNull(endpoint);
         Assert.assertEquals(endpoint.getClass().getName(), "org.apache.camel.component.nats.NatsEndpoint");
     }
     
-    @Ignore("We need a bit of tuning on CI server to make this test works")
     @Test
     public void testNatsRoutes() throws Exception {
+    	
+        String gnatsdPath = System.getenv().get(gnatsdEnvironmentProperty);
+
+        if (gnatsdPath == null) {
+            return;
+        }
+        
+        pb = new ProcessBuilder(gnatsdPath);
+        try {
+            p = pb.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         CamelContext camelctx = new DefaultCamelContext();
         try {
             camelctx.addRoutes(new RouteBuilder() {
                 @Override
                 public void configure() throws Exception {
-                	from("nats://demo.nats.io:4222?topic=test")
+                	from("nats://localhost:4222?topic=test")
                 	.to("mock:result");
                 }
             });
@@ -57,7 +72,7 @@ public class NatsIntegrationTest {
             camelctx.start();
             
             Properties opts = new Properties();
-            opts.put("servers", "nats://demo.nats.io:4222");
+            opts.put("servers", "nats://localhost:4222");
 
             Connection conn = Connection.connect(opts);
             conn.publish("test", "message");
@@ -66,6 +81,9 @@ public class NatsIntegrationTest {
 
         } finally {
             camelctx.stop();
+            if (p != null) {
+                p.destroy();
+            }
         }
     }
 }
