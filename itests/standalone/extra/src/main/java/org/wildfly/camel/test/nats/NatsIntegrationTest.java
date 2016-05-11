@@ -13,6 +13,7 @@ import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.nats.Connection;
@@ -44,9 +45,7 @@ public class NatsIntegrationTest {
     	
         String gnatsdPath = System.getenv().get(gnatsdEnvironmentProperty);
 
-        if (gnatsdPath == null) {
-            return;
-        }
+        Assume.assumeTrue(gnatsdPath != null);
         
         pb = new ProcessBuilder(gnatsdPath);
         try {
