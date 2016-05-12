@@ -76,7 +76,7 @@ public class NatsIntegrationTest {
             Connection conn = Connection.connect(opts);
             conn.publish("test", "message");
             
-            to.assertIsSatisfied(3000);
+            to.assertIsSatisfied(5000);
 
         } finally {
             camelctx.stop();
